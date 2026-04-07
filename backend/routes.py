@@ -63,6 +63,14 @@ class MeridianHandler(SimpleHTTPRequestHandler):
         if path == '/api/health':
             return self._json_response({"status": "ok", "service": "meridian-api"})
 
+        if path == '/api/status':
+            from config import USE_CLAUDE, ANTHROPIC_API_KEY
+            return self._json_response({
+                "status": "ok",
+                "ai_mode": "claude" if USE_CLAUDE else "mock",
+                "api_key_set": bool(ANTHROPIC_API_KEY)
+            })
+
         if path == '/api/auth/me':
             uid = self._get_user_id()
             if not uid:
