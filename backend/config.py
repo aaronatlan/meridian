@@ -4,7 +4,6 @@ Handles environment detection and fallback values for database, JWT, and API key
 """
 
 import os
-import sqlite3
 
 # ============================================================
 # PORT CONFIGURATION

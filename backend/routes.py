@@ -11,7 +11,7 @@ import uuid
 from http.server import SimpleHTTPRequestHandler
 from urllib.parse import urlparse
 
-from config import FRONTEND_DIR
+from config import FRONTEND_DIR, USE_CLAUDE, ANTHROPIC_API_KEY
 from auth import create_token, verify_token, hash_password, check_password
 from db import get_db
 from importer import parse_multipart_form, fetch_transcript_from_url, extract_text_from_upload
@@ -64,7 +64,6 @@ class MeridianHandler(SimpleHTTPRequestHandler):
             return self._json_response({"status": "ok", "service": "meridian-api"})
 
         if path == '/api/status':
-            from config import USE_CLAUDE, ANTHROPIC_API_KEY
             return self._json_response({
                 "status": "ok",
                 "ai_mode": "claude" if USE_CLAUDE else "mock",
@@ -154,12 +153,10 @@ class MeridianHandler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         path = urlparse(self.path).path
-        print(f"  [POST] {path}", flush=True)
 
         try:
             length = int(self.headers.get('Content-Length', 0))
             raw = self.rfile.read(length) if length > 0 else b'{}'
-            print(f"  [POST] body length={len(raw)}", flush=True)
             content_type = self.headers.get('Content-Type', '')
 
             # File upload is multipart — don't parse as JSON
