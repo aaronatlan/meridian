@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meridian — AI Equity Analyst</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0e17;
+      --bg-card: #111827;
+      --bg-card-hover: #1a2236;
+      --bg-input: #0d1220;
+      --bg-sidebar: #070b12;
+      --border: #1e293b;
+      --border-light: #1a2236;
+
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --text-dim: #475569;
+
+      --accent: #3b82f6;
+      --accent-hover: #60a5fa;
+      --accent-dim: #1d4ed8;
+      --accent-glow: rgba(59,130,246,0.12);
+
+      --green: #22c55e;
+      --green-dim: #166534;
+      --green-bg: rgba(34,197,94,0.1);
+      --red: #ef4444;
+      --red-dim: #991b1b;
+      --red-bg: rgba(239,68,68,0.1);
+      --amber: #f59e0b;
+      --amber-dim: #92400e;
+      --amber-bg: rgba(245,158,11,0.1);
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg); color: var(--text-primary);
+      -webkit-font-smoothing: antialiased; line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    .app-layout { display: flex; min-height: 100vh; }
+
+    .sidebar {
+      width: 240px; background: var(--bg-sidebar); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; padding: 24px 0; flex-shrink: 0;
+      position: fixed; top: 0; left: 0; bottom: 0; z-index: 40;
+    }
+    .sidebar-brand { padding: 0 20px; margin-bottom: 32px; display: flex; align-items: center; gap: 12px; }
+    .sidebar-logo {
+      width: 36px; height: 36px; background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 16px; color: #fff;
+    }
+    .sidebar-brand-text { font-weight: 700; font-size: 18px; color: var(--text-primary); letter-spacing: -0.02em; }
+    .sidebar-subtitle { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 1px; }
+
+    .sidebar-nav { flex: 1; padding: 0 12px; }
+    .sidebar-link {
+      display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px;
+      font-size: 14px; color: var(--text-secondary); text-decoration: none;
+      transition: all 0.15s; margin-bottom: 2px; border: none; background: none;
+      cursor: pointer; width: 100%; font-family: inherit;
+    }
+    .sidebar-link:hover { background: var(--bg-card); color: var(--text-primary); }
+    .sidebar-link.active { background: var(--accent-glow); color: var(--accent-hover); }
+    .sidebar-link svg { width: 18px; height: 18px; opacity: 0.7; }
+
+    .sidebar-footer { padding: 16px 20px; border-top: 1px solid var(--border); }
+    .sidebar-user { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
+    .sidebar-logout {
+      font-size: 12px; color: var(--text-muted); background: none; border: none;
+      cursor: pointer; font-family: inherit; padding: 0;
+    }
+    .sidebar-logout:hover { color: var(--red); }
+
+    .main-content { margin-left: 240px; flex: 1; padding: 32px 40px; min-height: 100vh; }
+
+    .card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+      transition: all 0.2s;
+    }
+    .card-hover:hover { border-color: #2d3a4f; background: var(--bg-card-hover); }
+
+    .btn-primary {
+      background: var(--accent); color: #fff; border: none; padding: 10px 20px;
+      border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer;
+      transition: all 0.15s; display: inline-flex; align-items: center; gap: 8px;
+      font-family: inherit; letter-spacing: -0.01em;
+    }
+    .btn-primary:hover { background: var(--accent-hover); box-shadow: 0 0 20px var(--accent-glow); }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-ghost {
+      background: transparent; color: var(--text-secondary); border: 1px solid var(--border);
+      padding: 9px 18px; border-radius: 8px; font-weight: 500; font-size: 13px;
+      cursor: pointer; transition: all 0.15s; display: inline-flex;
+      align-items: center; gap: 8px; font-family: inherit;
+    }
+    .btn-ghost:hover { border-color: var(--text-muted); color: var(--text-primary); }
+
+    .btn-icon {
+      background: transparent; color: var(--text-secondary); border: none;
+      padding: 8px; border-radius: 6px; cursor: pointer; transition: all 0.15s;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .btn-icon:hover { background: var(--bg-card); color: var(--accent); }
+
+    .input-field {
+      width: 100%; padding: 10px 14px; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--bg-input);
+      color: var(--text-primary); font-size: 14px; font-family: inherit;
+      transition: all 0.15s; outline: none;
+    }
+    .input-field:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+    .input-field::placeholder { color: var(--text-dim); }
+    textarea.input-field { resize: vertical; min-height: 200px; line-height: 1.7; }
+
+    .badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; letter-spacing: 0.03em; }
+    .badge-buy { background: var(--green-bg); color: var(--green); border: 1px solid rgba(34,197,94,0.2); }
+    .badge-hold { background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(245,158,11,0.2); }
+    .badge-sell { background: var(--red-bg); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+
+    .impact-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; letter-spacing: 0.05em; }
+    .impact-HIGH { color: var(--red); background: var(--red-bg); }
+    .impact-MEDIUM { color: var(--amber); background: var(--amber-bg); }
+    .impact-LOW { color: var(--green); background: var(--green-bg); }
+
+    .spinner { width: 32px; height: 32px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+    .spinner-sm { width: 16px; height: 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .metrics-table { width: 100%; border-collapse: collapse; }
+    .metrics-table th {
+      text-align: left; padding: 10px 16px; font-size: 10px; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--text-muted); border-bottom: 1px solid var(--border);
+      font-weight: 600;
+    }
+    .metrics-table th:not(:first-child) { text-align: right; }
+    .metrics-table td { padding: 14px 16px; border-bottom: 1px solid var(--border-light); font-size: 14px; }
+    .metrics-table td:not(:first-child) { text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+    .metrics-table tr:last-child td { border-bottom: none; }
+    .metrics-table tr:hover { background: rgba(255,255,255,0.02); }
+
+    .positive { color: var(--green); }
+    .negative { color: var(--red); }
+
+    .rec-card { padding: 28px 32px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-width: 1px; }
+    .rec-buy { border-color: rgba(34,197,94,0.3); background: linear-gradient(135deg, rgba(34,197,94,0.08), rgba(34,197,94,0.02)); }
+    .rec-hold { border-color: rgba(245,158,11,0.3); background: linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.02)); }
+    .rec-sell { border-color: rgba(239,68,68,0.3); background: linear-gradient(135deg, rgba(239,68,68,0.08), rgba(239,68,68,0.02)); }
+    .rec-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.7; margin-bottom: 4px; }
+    .rec-value { font-size: 36px; font-weight: 800; letter-spacing: -0.03em; }
+
+    .catalyst-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 7px; }
+    .dot-POSITIVE { background: var(--green); box-shadow: 0 0 8px rgba(34,197,94,0.4); }
+    .dot-NEGATIVE { background: var(--red); box-shadow: 0 0 8px rgba(239,68,68,0.4); }
+    .dot-NEUTRAL { background: var(--text-muted); }
+
+    .section { margin-bottom: 20px; }
+    .section-title { font-size: 15px; font-weight: 700; margin-bottom: 16px; letter-spacing: -0.01em; }
+    .section-content { padding: 24px; }
+
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 50; }
+
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+
+    .login-bg { min-height: 100vh; background: var(--bg); display: flex; align-items: center; justify-content: center; padding: 20px; }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-in { animation: fadeIn 0.25s ease-out; }
+
+    .error-box { background: var(--red-bg); border: 1px solid rgba(239,68,68,0.2); border-radius: 8px; padding: 12px 16px; font-size: 14px; color: var(--red); margin-bottom: 16px; }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+    .radar-container { display: flex; gap: 40px; align-items: center; padding: 24px 0; }
+    .radar-chart { flex-shrink: 0; }
+    .radar-scores { flex: 1; }
+    .score-bar { margin-bottom: 16px; }
+    .score-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; }
+    .score-track { width: 100%; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+    .score-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.3s ease; }
+
+    .filter-controls { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; }
+    .filter-search { flex: 1; min-width: 250px; }
+    .filter-group { display: flex; gap: 8px; }
+
+    .comparison-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+    @media (max-width: 768px) {
+      .grid-3, .grid-2, .comparison-grid { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .main-content { margin-left: 0; }
+      .radar-container { flex-direction: column; gap: 20px; }
+    }
+  </style>
+  <script type="text/babel">
+    const { useState, useEffect, useContext, createContext } = React;
+
+    const Icon = {
+      dashboard: React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5 }, React.createElement('path', { d: 'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z', strokeLinecap: 'round', strokeLinejoin: 'round' }), React.createElement('path', { d: 'M9 22V12h6v10', strokeLinecap: 'round', strokeLinejoin: 'round' })),
+      analyze: React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5 }, React.createElement('path', { d: 'M9 11l3 3L22 4', strokeLinecap: 'round', strokeLinejoin: 'round' }), React.createElement('path', { d: 'M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11', strokeLinecap: 'round', strokeLinejoin: 'round' })),
+      bookmark: React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5 }, React.createElement('path', { d: 'M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z', strokeLinecap: 'round', strokeLinejoin: 'round' })),
+      bookmarkFill: React.createElement('svg', { viewBox: '0 0 24 24', fill: 'currentColor' }, React.createElement('path', { d: 'M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z' })),
+      back: React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5 }, React.createElement('path', { d: 'M19 12H5m7 7l-7-7 7-7', strokeLinecap: 'round', strokeLinejoin: 'round' })),
+      download: React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5 }, React.createElement('path', { d: 'M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3', strokeLinecap: 'round', strokeLinejoin: 'round' })),
+      trash: React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5 }, React.createElement('path', { d: 'M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M4 7h16', strokeLinecap: 'round', strokeLinejoin: 'round' })),
+      watch: React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5 }, React.createElement('path', { d: 'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z', strokeLinecap: 'round', strokeLinejoin: 'round' }), React.createElement('circle', { cx: '12', cy: '12', r: '3', strokeLinecap: 'round', strokeLinejoin: 'round' })),
+      compare: React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5 }, React.createElement('path', { d: 'M9 3H5a2 2 0 00-2 2v14a2 2 0 002 2h4m0-18v18m0-18h10a2 2 0 012 2v14a2 2 0 01-2 2h-10', strokeLinecap: 'round', strokeLinejoin: 'round' })),
+    };
+
+    // Helper: all API calls go through here
+    async function apiCall(path, opts = {}) {
+      const token = localStorage.getItem('token');
+      const headers = { ...opts.headers };
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      if (opts.body && typeof opts.body === 'string') headers['Content-Type'] = 'application/json';
+      const resp = await fetch('/api' + path, { ...opts, headers });
+      const j = await resp.json();
+      if (!j.success) throw new Error(j.error || 'Erreur');
+      return j.data;
+    }
+
+    const api = {
+      getMemos: () => apiCall('/memos'),
+      getMemo: (id) => apiCall('/memos/' + id),
+      analyze: (payload) => apiCall('/memos/analyze', { method: 'POST', body: JSON.stringify(payload) }),
+      deleteMemo: (id) => apiCall('/memos/' + id, { method: 'DELETE' }),
+      exportPdf: async (id) => {
+        const token = localStorage.getItem('token');
+        const resp = await fetch('/api/memos/' + id + '/pdf', { headers: { 'Authorization': 'Bearer ' + token } });
+        if (!resp.ok) throw new Error('Erreur export');
+        return await resp.blob();
+      },
+    };
+
+    const AuthContext = createContext();
+    const useAuth = () => useContext(AuthContext);
+
+    function AuthProvider({ children }) {
+      const [user, setUser] = useState(null);
+      const [loading, setLoading] = useState(true);
+
+      useEffect(() => {
+        const token = localStorage.getItem('token');
+        const storedUser = localStorage.getItem('user');
+        if (token && storedUser) setUser(JSON.parse(storedUser));
+        setLoading(false);
+      }, []);
+
+      const login = async (email, password) => {
+        const data = await apiCall('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        setUser(data.user);
+      };
+
+      const register = async (email, password, name) => {
+        const data = await apiCall('/auth/register', { method: 'POST', body: JSON.stringify({ email, password, name }) });
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        setUser(data.user);
+      };
+
+      const logout = () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setUser(null);
+      };
+
+      return React.createElement(AuthContext.Provider, { value: { user, login, register, logout, loading } }, children);
+    }
+
+    function useRouter() {
+      const [path, setPath] = useState(window.location.hash.slice(1) || '/');
+      useEffect(() => {
+        const handleHashChange = () => setPath(window.location.hash.slice(1) || '/');
+        window.addEventListener('hashchange', handleHashChange);
+        return () => window.removeEventListener('hashchange', handleHashChange);
+      }, []);
+      return { path };
+    }
+
+    const watchlistStorage = {
+      get: () => JSON.parse(localStorage.getItem('watchlist') || '{}'),
+      set: (data) => localStorage.setItem('watchlist', JSON.stringify(data)),
+      addTicker: (ticker) => {
+        const data = watchlistStorage.get();
+        data[ticker] = { ticker, addedAt: new Date().toISOString() };
+        watchlistStorage.set(data);
+      },
+      removeTicker: (ticker) => {
+        const data = watchlistStorage.get();
+        delete data[ticker];
+        watchlistStorage.set(data);
+      },
+      hasTicker: (ticker) => ticker in watchlistStorage.get(),
+    };
+
+    function RadarChart({ scores }) {
+      const size = 200;
+      const center = size / 2;
+      const maxRadius = 70;
+      const labels = ['Croissance', 'Rentabilite', 'Momentum', 'Risque', 'Qualite'];
+      const values = [scores.growthScore || 0, scores.profitabilityScore || 0, scores.momentumScore || 0, scores.riskScore || 0, scores.qualityScore || 0];
+      const numPoints = 5;
+
+      const getAngle = (i) => (i * 2 * Math.PI / numPoints) - Math.PI / 2;
+      const getCoord = (angle, radius) => [center + radius * Math.cos(angle), center + radius * Math.sin(angle)];
+
+      const points = values.map((v, i) => getCoord(getAngle(i), (v / 100) * maxRadius));
+      const polygonPath = points.map((p, i) => (i === 0 ? 'M' : 'L') + p[0] + ',' + p[1]).join(' ') + 'Z';
+
+      const gridLines = [20, 40, 60, 80, 100].map((level, idx) => {
+        const radius = (level / 100) * maxRadius;
+        const gridPoints = Array.from({ length: numPoints }).map((_, i) => getCoord(getAngle(i), radius));
+        const gridPath = gridPoints.map((p, i) => (i === 0 ? 'M' : 'L') + p[0] + ',' + p[1]).join(' ') + 'Z';
+        return React.createElement('path', { key: idx, d: gridPath, fill: 'none', stroke: 'var(--border-light)', strokeWidth: 0.5, opacity: 0.4 });
+      });
+
+      const axisLines = Array.from({ length: numPoints }).map((_, i) => {
+        const angle = getAngle(i);
+        const p1 = getCoord(angle, 0);
+        const p2 = getCoord(angle, maxRadius + 10);
+        return React.createElement('line', { key: i, x1: p1[0], y1: p1[1], x2: p2[0], y2: p2[1], stroke: 'var(--border)', strokeWidth: 0.5 });
+      });
+
+      const pointDots = points.map((p, i) => React.createElement('circle', { key: i, cx: p[0], cy: p[1], r: 3, fill: 'var(--accent)', stroke: 'var(--bg-card)', strokeWidth: 1 }));
+
+      const labelElems = Array.from({ length: numPoints }).map((_, i) => {
+        const angle = getAngle(i);
+        const p = getCoord(angle, maxRadius + 20);
+        return React.createElement('text', {
+          key: i,
+          x: p[0],
+          y: p[1],
+          textAnchor: 'middle',
+          dy: '0.3em',
+          fill: 'var(--text-muted)',
+          fontSize: 10,
+          fontFamily: 'Inter, sans-serif',
+        }, labels[i]);
+      });
+
+      return React.createElement('svg', { viewBox: `0 0 ${size} ${size}`, width: 200, height: 200, style: { display: 'block' } },
+        React.createElement('defs', null,
+          React.createElement('style', null, 'text { -webkit-user-select: none; user-select: none; }')
+        ),
+        ...gridLines,
+        ...axisLines,
+        React.createElement('path', { d: polygonPath, fill: 'var(--accent)', opacity: 0.15, stroke: 'var(--accent)', strokeWidth: 1.5 }),
+        ...pointDots,
+        ...labelElems
+      );
+    }
+
+    function Sidebar() {
+      const { user, logout } = useAuth();
+      const { path } = useRouter();
+
+      const link = (href, icon, label) => React.createElement('a', {
+        href: `#${href}`,
+        className: `sidebar-link ${path === href ? 'active' : ''}`,
+        style: { textDecoration: 'none', color: 'inherit' }
+      }, icon, label);
+
+      return React.createElement('aside', { className: 'sidebar' },
+        React.createElement('div', { className: 'sidebar-brand' },
+          React.createElement('div', { className: 'sidebar-logo' }, 'M'),
+          React.createElement('div', null,
+            React.createElement('div', { className: 'sidebar-brand-text' }, 'Meridian'),
+            React.createElement('div', { className: 'sidebar-subtitle' }, 'AI Research')
+          )
+        ),
+        React.createElement('nav', { className: 'sidebar-nav' },
+          link('/', Icon.dashboard, 'Dashboard'),
+          link('/analyze', Icon.analyze, 'Nouvelle analyse'),
+          link('/watchlist', Icon.watch, 'Watchlist'),
+          link('/compare', Icon.compare, 'Comparer')
+        ),
+        user && React.createElement('div', { className: 'sidebar-footer' },
+          React.createElement('div', { className: 'sidebar-user' }, user.name),
+          React.createElement('button', { className: 'sidebar-logout', onClick: () => { logout(); window.location.hash = '/login'; } }, 'Se deconnecter')
+        )
+      );
+    }
+
+    function LoginPage() {
+      const [isReg, setIsReg] = useState(false);
+      const [email, setEmail] = useState('');
+      const [pw, setPw] = useState('');
+      const [name, setName] = useState('');
+      const [err, setErr] = useState('');
+      const [loading, setLoading] = useState(false);
+      const { login, register } = useAuth();
+
+      const submit = async (e) => {
+        e.preventDefault(); setErr(''); setLoading(true);
+        try { isReg ? await register(email, pw, name) : await login(email, pw); window.location.hash = '/'; }
+        catch (e) { setErr(e.message); } setLoading(false);
+      };
+
+      return React.createElement('div', { className: 'login-bg' },
+        React.createElement('div', { style: { width: '100%', maxWidth: 400 }, className: 'fade-in' },
+          React.createElement('div', { style: { textAlign: 'center', marginBottom: 40 } },
+            React.createElement('div', { style: { width: 56, height: 56, background: 'linear-gradient(135deg, #1d4ed8, #3b82f6)', borderRadius: 16, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 } },
+              React.createElement('span', { style: { color: '#fff', fontWeight: 800, fontSize: 24 } }, 'M')
+            ),
+            React.createElement('h1', { style: { fontSize: 28, fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text-primary)' } }, 'Meridian'),
+            React.createElement('p', { style: { color: 'var(--text-muted)', marginTop: 6, fontSize: 14 } }, 'AI-Powered Equity Research')
+          ),
+          React.createElement('div', { className: 'card', style: { padding: 32 } },
+            React.createElement('h2', { style: { fontSize: 16, fontWeight: 600, marginBottom: 24, color: 'var(--text-secondary)' } },
+              isReg ? 'Creer un compte' : 'Se connecter'
+            ),
+            err && React.createElement('div', { className: 'error-box' }, err),
+            React.createElement('form', { onSubmit: submit, style: { display: 'flex', flexDirection: 'column', gap: 16 } },
+              isReg && React.createElement('div', null,
+                React.createElement('label', { style: { display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' } }, 'Nom'),
+                React.createElement('input', { className: 'input-field', placeholder: 'Votre nom', value: name, onChange: e => setName(e.target.value), required: isReg })
+              ),
+              React.createElement('div', null,
+                React.createElement('label', { style: { display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' } }, 'Email'),
+                React.createElement('input', { type: 'email', className: 'input-field', placeholder: 'analyste@fund.com', value: email, onChange: e => setEmail(e.target.value), required: true })
+              ),
+              React.createElement('div', null,
+                React.createElement('label', { style: { display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' } }, 'Mot de passe'),
+                React.createElement('input', { type: 'password', className: 'input-field', placeholder: '............', value: pw, onChange: e => setPw(e.target.value), required: true })
+              ),
+              React.createElement('button', { type: 'submit', className: 'btn-primary', style: { width: '100%', justifyContent: 'center', marginTop: 8, padding: '12px 20px' }, disabled: loading },
+                loading ? 'Chargement...' : (isReg ? 'Creer le compte' : 'Se connecter')
+              )
+            ),
+            React.createElement('div', { style: { textAlign: 'center', marginTop: 20 } },
+              React.createElement('button', {
+                onClick: () => { setIsReg(!isReg); setErr(''); },
+                style: { background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }
+              }, isReg ? 'Deja un compte ? Se connecter' : "Pas de compte ? S'inscrire")
+            )
+          )
+        )
+      );
+    }
+
+    function DashboardPage() {
+      const [memos, setMemos] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [searchText, setSearchText] = useState('');
+      const [filterRec, setFilterRec] = useState('ALL');
+      const [sortBy, setSortBy] = useState('date');
+
+      useEffect(() => { api.getMemos().then(setMemos).catch(console.error).finally(() => setLoading(false)); }, []);
+
+      const del = async (e, id) => {
+        e.stopPropagation(); e.preventDefault();
+        if (!confirm('Supprimer ce memo ?')) return;
+        await api.deleteMemo(id); setMemos(p => p.filter(m => m.id !== id));
+      };
+
+      const bc = (r) => r === 'BUY' ? 'badge badge-buy' : r === 'SELL' ? 'badge badge-sell' : 'badge badge-hold';
+
+      let filtered = memos.filter(m => {
+        const match = m.ticker.toUpperCase().includes(searchText.toUpperCase()) || m.companyName.toUpperCase().includes(searchText.toUpperCase());
+        const recMatch = filterRec === 'ALL' || m.analysis.recommendation === filterRec;
+        return match && recMatch;
+      });
+
+      if (sortBy === 'ticker') filtered = filtered.sort((a, b) => a.ticker.localeCompare(b.ticker));
+      else if (sortBy === 'rec') filtered = filtered.sort((a, b) => ['BUY', 'HOLD', 'SELL'].indexOf(a.analysis.recommendation) - ['BUY', 'HOLD', 'SELL'].indexOf(b.analysis.recommendation));
+
+      if (loading) return React.createElement('div', { style: { display: 'flex', justifyContent: 'center', padding: 80 } }, React.createElement('div', { className: 'spinner' }));
+
+      return React.createElement('div', { className: 'fade-in' },
+        React.createElement('div', { style: { marginBottom: 32 } },
+          React.createElement('h1', { style: { fontSize: 24, fontWeight: 800, letterSpacing: '-0.03em' } }, 'Dashboard'),
+          React.createElement('p', { style: { color: 'var(--text-muted)', marginTop: 4, fontSize: 14 } }, `${filtered.length} de ${memos.length} memo${memos.length !== 1 ? 's' : ''}`)
+        ),
+
+        React.createElement('div', { className: 'filter-controls' },
+          React.createElement('div', { className: 'filter-search' },
+            React.createElement('input', {
+              type: 'text',
+              className: 'input-field',
+              placeholder: 'Chercher par ticker ou entreprise...',
+              value: searchText,
+              onChange: e => setSearchText(e.target.value)
+            })
+          ),
+          React.createElement('div', { className: 'filter-group' },
+            ['ALL', 'BUY', 'HOLD', 'SELL'].map(r =>
+              React.createElement('button', {
+                key: r,
+                onClick: () => setFilterRec(r),
+                className: 'btn-ghost',
+                style: {
+                  background: filterRec === r ? 'var(--accent)' : 'transparent',
+                  color: filterRec === r ? '#fff' : 'var(--text-secondary)',
+                  borderColor: filterRec === r ? 'var(--accent)' : 'var(--border)'
+                }
+              }, r)
+            )
+          ),
+          React.createElement('select', {
+            className: 'input-field',
+            value: sortBy,
+            onChange: e => setSortBy(e.target.value),
+            style: { width: 150 }
+          },
+            React.createElement('option', { value: 'date' }, 'Date'),
+            React.createElement('option', { value: 'ticker' }, 'Ticker'),
+            React.createElement('option', { value: 'rec' }, 'Recommandation')
+          )
+        ),
+
+        memos.length === 0
+          ? React.createElement('div', { className: 'card', style: { padding: 64, textAlign: 'center' } },
+              React.createElement('div', { style: { width: 48, height: 48, border: '2px solid var(--border)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', color: 'var(--text-dim)' } },
+                React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, width: 24, height: 24 },
+                  React.createElement('path', { d: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', strokeLinecap: 'round', strokeLinejoin: 'round' })
+                )
+              ),
+              React.createElement('h3', { style: { fontSize: 18, fontWeight: 600, marginBottom: 8 } }, 'Aucun memo'),
+              React.createElement('p', { style: { color: 'var(--text-muted)', marginBottom: 28, fontSize: 14 } }, "Analysez votre premier earnings call."),
+              React.createElement('a', { href: '#/analyze', className: 'btn-primary', style: { textDecoration: 'none' } }, 'Lancer une analyse')
+            )
+          : React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } },
+              filtered.map(m =>
+                React.createElement('a', {
+                  key: m.id, href: `#/memo/${m.id}`, className: 'card card-hover',
+                  style: { padding: '20px 24px', textDecoration: 'none', color: 'inherit', display: 'block' }
+                },
+                  React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+                    React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 16, flex: 1, minWidth: 0 } },
+                      React.createElement('span', { className: 'mono', style: { fontWeight: 600, color: 'var(--accent-hover)', fontSize: 15, minWidth: 60 } }, m.ticker),
+                      React.createElement('span', { className: bc(m.analysis.recommendation) }, m.analysis.recommendation),
+                      React.createElement('span', { style: { color: 'var(--text-secondary)', fontSize: 14, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, m.companyName),
+                    ),
+                    React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 } },
+                      React.createElement('span', { className: 'mono', style: { fontSize: 12, color: 'var(--text-muted)' } }, `${Math.round(m.analysis.confidenceScore * 100)}%`),
+                      React.createElement('span', { style: { fontSize: 12, color: 'var(--text-dim)' } }, m.quarter),
+                      React.createElement('span', { style: { fontSize: 12, color: 'var(--text-dim)' } }, new Date(m.createdAt).toLocaleDateString('fr-FR')),
+                      React.createElement('button', {
+                        onClick: (e) => del(e, m.id),
+                        style: { background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', padding: 4, display: 'flex' }
+                      }, Icon.trash)
+                    )
+                  )
+                )
+              )
+            )
+      );
+    }
+
+    function AnalyzePage() {
+      const [transcript, setTranscript] = useState('');
+      const [ticker, setTicker] = useState('');
+      const [company, setCompany] = useState('');
+      const [quarter, setQuarter] = useState('');
+      const [loading, setLoading] = useState(false);
+      const [importing, setImporting] = useState(false);
+      const [err, setErr] = useState('');
+      const [tab, setTab] = useState('paste');
+      const [url, setUrl] = useState('');
+      const [fileName, setFileName] = useState('');
+      const [fileRef] = useState({ current: null });
+
+      const importFromUrl = async () => {
+        if (!url.trim()) { setErr("Entrez une URL valide."); return; }
+        setErr(''); setImporting(true);
+        try {
+          const token = localStorage.getItem('token');
+          const resp = await fetch('/api/import/url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify({ url: url.trim() })
+          });
+          const json = await resp.json();
+          if (!json.success) throw new Error(json.error || 'Erreur import URL');
+          setTranscript(json.data.transcript);
+          setTab('paste');
+        } catch (e) { setErr(e.message); }
+        setImporting(false);
+      };
+
+      const importFromFile = async () => {
+        const input = fileRef.current;
+        if (!input || !input.files || !input.files[0]) { setErr("Selectionnez un fichier."); return; }
+        const file = input.files[0];
+        setErr(''); setImporting(true);
+        try {
+          const token = localStorage.getItem('token');
+          const formData = new FormData();
+          formData.append('file', file);
+          const resp = await fetch('/api/import/file', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token },
+            body: formData
+          });
+          const json = await resp.json();
+          if (!json.success) throw new Error(json.error || 'Erreur import fichier');
+          setTranscript(json.data.transcript);
+          setTab('paste');
+        } catch (e) { setErr(e.message); }
+        setImporting(false);
+      };
+
+      const submit = async (e) => {
+        e.preventDefault();
+        if (!transcript.trim() || !ticker.trim() || !company.trim()) { setErr('Remplissez tous les champs obligatoires.'); return; }
+        setErr(''); setLoading(true);
+        try { const m = await api.analyze({ transcript, ticker, companyName: company, quarter }); window.location.hash = `/memo/${m.id}`; }
+        catch (e) { setErr(e.message); setLoading(false); }
+      };
+
+      const wc = transcript.trim() ? transcript.trim().split(/\s+/).length : 0;
+
+      const tabStyle = (t) => ({
+        padding: '10px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+        background: tab === t ? 'var(--accent)' : 'transparent',
+        color: tab === t ? '#fff' : 'var(--text-muted)',
+        border: tab === t ? 'none' : '1px solid var(--border)',
+        borderRadius: 8, transition: 'all 0.2s'
+      });
+
+      const transcriptInput = tab === 'paste'
+        ? React.createElement('div', null,
+            React.createElement('textarea', {
+              className: 'input-field mono', style: { minHeight: 280, fontSize: 13 },
+              placeholder: "Collez ici le transcript complet de l'earnings call...",
+              value: transcript, onChange: e => setTranscript(e.target.value)
+            }),
+            React.createElement('p', { style: { fontSize: 12, color: 'var(--text-dim)', marginTop: 8 } },
+              wc > 0 ? `${transcript.length.toLocaleString()} caracteres — ~${wc} mots` : "Seeking Alpha, Motley Fool, ou tout autre format")
+          )
+        : tab === 'url'
+        ? React.createElement('div', null,
+            React.createElement('div', { style: { display: 'flex', gap: 10, alignItems: 'stretch' } },
+              React.createElement('input', {
+                className: 'input-field', style: { flex: 1, fontSize: 14 },
+                placeholder: 'https://seekingalpha.com/article/...',
+                value: url, onChange: e => setUrl(e.target.value)
+              }),
+              React.createElement('button', {
+                type: 'button', className: 'btn-primary', disabled: importing,
+                style: { padding: '12px 20px', whiteSpace: 'nowrap' },
+                onClick: importFromUrl
+              }, importing ? 'Import...' : 'Importer')
+            ),
+            React.createElement('p', { style: { fontSize: 12, color: 'var(--text-dim)', marginTop: 8 } },
+              "Collez un lien Seeking Alpha, Motley Fool, ou toute page contenant un transcript."),
+            transcript && React.createElement('p', { style: { fontSize: 12, color: 'var(--green)', marginTop: 6 } },
+              `Transcript importe (${transcript.length.toLocaleString()} caracteres). Bascule sur l'onglet Coller.`)
+          )
+        : React.createElement('div', null,
+            React.createElement('div', { style: { border: '2px dashed var(--border)', borderRadius: 12, padding: 40, textAlign: 'center', cursor: 'pointer', transition: 'border-color 0.2s' },
+              onClick: () => fileRef.current && fileRef.current.click(),
+              onDragOver: e => { e.preventDefault(); e.currentTarget.style.borderColor = 'var(--accent)'; },
+              onDragLeave: e => { e.currentTarget.style.borderColor = 'var(--border)'; },
+              onDrop: e => { e.preventDefault(); e.currentTarget.style.borderColor = 'var(--border)'; if (e.dataTransfer.files[0] && fileRef.current) { fileRef.current.files = e.dataTransfer.files; setFileName(e.dataTransfer.files[0].name); } }
+            },
+              React.createElement('input', {
+                type: 'file', accept: '.txt,.text', style: { display: 'none' },
+                ref: el => { fileRef.current = el; },
+                onChange: e => { if (e.target.files[0]) setFileName(e.target.files[0].name); }
+              }),
+              React.createElement('div', { style: { color: 'var(--text-muted)', marginBottom: 8 } },
+                React.createElement('svg', { width: 32, height: 32, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, style: { margin: '0 auto' } },
+                  React.createElement('path', { d: 'M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12' })
+                )
+              ),
+              React.createElement('p', { style: { fontSize: 14, color: 'var(--text-secondary)' } },
+                fileName ? fileName : 'Glissez un fichier ici ou cliquez pour parcourir'),
+              React.createElement('p', { style: { fontSize: 12, color: 'var(--text-dim)', marginTop: 4 } }, 'Fichiers .txt acceptes')
+            ),
+            fileName && React.createElement('div', { style: { display: 'flex', justifyContent: 'flex-end', marginTop: 12 } },
+              React.createElement('button', {
+                type: 'button', className: 'btn-primary', disabled: importing,
+                style: { padding: '10px 20px' },
+                onClick: importFromFile
+              }, importing ? 'Import...' : 'Importer le fichier')
+            ),
+            transcript && React.createElement('p', { style: { fontSize: 12, color: 'var(--green)', marginTop: 8 } },
+              `Transcript importe (${transcript.length.toLocaleString()} caracteres). Bascule sur l'onglet Coller.`)
+          );
+
+      return React.createElement('div', { className: 'fade-in', style: { maxWidth: 800, margin: '0 auto' } },
+        React.createElement('div', { style: { marginBottom: 32 } },
+          React.createElement('h1', { style: { fontSize: 24, fontWeight: 800, letterSpacing: '-0.03em' } }, 'Nouvelle analyse'),
+          React.createElement('p', { style: { color: 'var(--text-muted)', marginTop: 4, fontSize: 14 } }, "Importez un transcript d'earnings call.")
+        ),
+        err && React.createElement('div', { className: 'error-box' }, err),
+        React.createElement('form', { onSubmit: submit },
+          React.createElement('div', { className: 'card', style: { padding: 24 } },
+            React.createElement('div', { className: 'grid-3', style: { marginBottom: 20 } },
+              React.createElement('div', null,
+                React.createElement('label', { style: { display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' } }, 'Ticker *'),
+                React.createElement('input', { className: 'input-field mono', style: { textTransform: 'uppercase' }, placeholder: 'NVDA', value: ticker, onChange: e => setTicker(e.target.value.toUpperCase()), maxLength: 10 })
+              ),
+              React.createElement('div', null,
+                React.createElement('label', { style: { display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' } }, 'Entreprise *'),
+                React.createElement('input', { className: 'input-field', placeholder: 'NVIDIA Corporation', value: company, onChange: e => setCompany(e.target.value) })
+              ),
+              React.createElement('div', null,
+                React.createElement('label', { style: { display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' } }, 'Trimestre'),
+                React.createElement('input', { className: 'input-field', placeholder: 'Q4 2025', value: quarter, onChange: e => setQuarter(e.target.value) })
+              )
+            ),
+            React.createElement('div', { style: { display: 'flex', gap: 8, marginBottom: 16 } },
+              React.createElement('button', { type: 'button', style: tabStyle('paste'), onClick: () => setTab('paste') }, 'Coller'),
+              React.createElement('button', { type: 'button', style: tabStyle('url'), onClick: () => setTab('url') }, 'URL'),
+              React.createElement('button', { type: 'button', style: tabStyle('file'), onClick: () => setTab('file') }, 'Fichier')
+            ),
+            transcriptInput
+          ),
+          React.createElement('div', { style: { display: 'flex', justifyContent: 'flex-end', marginTop: 20 } },
+            React.createElement('button', { type: 'submit', className: 'btn-primary', disabled: loading || !transcript.trim(), style: { padding: '12px 24px' } },
+              loading ? React.createElement(React.Fragment, null, React.createElement('div', { className: 'spinner spinner-sm', style: { borderTopColor: '#fff' } }), 'Analyse en cours...')
+                : React.createElement(React.Fragment, null, 'Analyser le transcript')
+            )
+          )
+        ),
+        loading && React.createElement('div', { className: 'overlay' },
+          React.createElement('div', { className: 'card', style: { padding: 40, maxWidth: 380, textAlign: 'center' } },
+            React.createElement('div', { className: 'spinner', style: { margin: '0 auto 20px' } }),
+            React.createElement('h3', { style: { fontWeight: 600, marginBottom: 8 } }, 'Analyse en cours'),
+            React.createElement('p', { style: { fontSize: 13, color: 'var(--text-muted)' } }, "Extraction des metriques, structuration du memo...")
+          )
+        )
+      );
+    }
+
+    function MemoPage({ memoId }) {
+      const [memo, setMemo] = useState(null);
+      const [loading, setLoading] = useState(true);
+      const [exporting, setExporting] = useState(false);
+      const [isWatched, setIsWatched] = useState(false);
+
+      useEffect(() => {
+        if (memoId) {
+          setLoading(true);
+          api.getMemo(memoId).then(m => {
+            setMemo(m);
+            setIsWatched(watchlistStorage.hasTicker(m.ticker));
+          }).catch(console.error).finally(() => setLoading(false));
+        }
+      }, [memoId]);
+
+      const exportPdf = async () => {
+        if (!memo) return; setExporting(true);
+        try { const b = await api.exportPdf(memo.id); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = `Meridian_${memo.ticker}_${memo.quarter}.html`; a.click(); URL.revokeObjectURL(u); }
+        catch(e) { console.error(e); } setExporting(false);
+      };
+
+      const toggleWatch = () => {
+        if (!memo) return;
+        if (isWatched) watchlistStorage.removeTicker(memo.ticker);
+        else watchlistStorage.addTicker(memo.ticker);
+        setIsWatched(!isWatched);
+      };
+
+      if (loading) return React.createElement('div', { style: { display: 'flex', justifyContent: 'center', padding: 80 } }, React.createElement('div', { className: 'spinner' }));
+      if (!memo) return React.createElement('div', { style: { textAlign: 'center', padding: 48 } },
+        React.createElement('p', { style: { color: 'var(--text-muted)' } }, 'Memo non trouve.'),
+        React.createElement('a', { href: '#/', style: { color: 'var(--accent)' } }, 'Retour')
+      );
+
+      const a = memo.analysis;
+      const recCls = a.recommendation === 'BUY' ? 'rec-buy' : a.recommendation === 'SELL' ? 'rec-sell' : 'rec-hold';
+      const recColor = a.recommendation === 'BUY' ? 'var(--green)' : a.recommendation === 'SELL' ? 'var(--red)' : 'var(--amber)';
+
+      const ml = { revenue: "Chiffre d'affaires", eps: "BPA (EPS)", grossMargin: "Marge brute", operatingMargin: "Marge operationnelle", debtToEquity: "Dette / Fonds propres", freeCashFlow: "Free Cash Flow" };
+
+      return React.createElement('div', { className: 'fade-in', style: { maxWidth: 800, margin: '0 auto' } },
+        React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 } },
+          React.createElement('div', null,
+            React.createElement('a', { href: '#/', style: { display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-muted)', textDecoration: 'none', marginBottom: 12 } }, Icon.back, 'Dashboard'),
+            React.createElement('div', { style: { display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 4 } },
+              React.createElement('h1', { style: { fontSize: 24, fontWeight: 800, letterSpacing: '-0.03em' } }, memo.companyName),
+              React.createElement('span', { className: 'mono', style: { color: 'var(--accent-hover)', fontWeight: 600, fontSize: 16 } }, memo.ticker)
+            ),
+            React.createElement('p', { style: { color: 'var(--text-muted)', fontSize: 14 } },
+              `${memo.quarter} — ${new Date(memo.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`)
+          ),
+          React.createElement('div', { style: { display: 'flex', gap: 8 } },
+            React.createElement('button', { onClick: toggleWatch, className: 'btn-ghost', title: isWatched ? 'Retirer de la watchlist' : 'Ajouter a la watchlist' },
+              isWatched ? Icon.bookmarkFill : Icon.bookmark
+            ),
+            React.createElement('button', { onClick: exportPdf, className: 'btn-ghost', disabled: exporting },
+              Icon.download, exporting ? 'Export...' : 'Exporter')
+          )
+        ),
+
+        React.createElement('div', { className: `card ${recCls} rec-card` },
+          React.createElement('div', null,
+            React.createElement('div', { className: 'rec-label', style: { color: recColor } }, 'Recommandation'),
+            React.createElement('div', { className: 'rec-value', style: { color: recColor } }, a.recommendation)
+          ),
+          React.createElement('div', { style: { textAlign: 'right' } },
+            React.createElement('div', { className: 'rec-label', style: { color: recColor } }, 'Confiance'),
+            React.createElement('div', { className: 'rec-value', style: { color: recColor } }, `${Math.round(a.confidenceScore * 100)}%`)
+          )
+        ),
+
+        a.detailedScoring && React.createElement('div', { className: 'card section' },
+          React.createElement('div', { className: 'section-content' },
+            React.createElement('h2', { className: 'section-title' }, 'Scoring detaille'),
+            React.createElement('div', { className: 'radar-container' },
+              React.createElement('div', { className: 'radar-chart' },
+                React.createElement(RadarChart, { scores: a.detailedScoring })
+              ),
+              React.createElement('div', { className: 'radar-scores' },
+                React.createElement('div', { className: 'score-bar' },
+                  React.createElement('div', { className: 'score-label' },
+                    React.createElement('span', null, 'Croissance'),
+                    React.createElement('span', { className: 'mono', style: { fontWeight: 600 } }, `${Math.round(a.detailedScoring.growthScore || 0)}/100`)
+                  ),
+                  React.createElement('div', { className: 'score-track' },
+                    React.createElement('div', { className: 'score-fill', style: { width: `${a.detailedScoring.growthScore || 0}%` } })
+                  )
+                ),
+                React.createElement('div', { className: 'score-bar' },
+                  React.createElement('div', { className: 'score-label' },
+                    React.createElement('span', null, 'Rentabilite'),
+                    React.createElement('span', { className: 'mono', style: { fontWeight: 600 } }, `${Math.round(a.detailedScoring.profitabilityScore || 0)}/100`)
+                  ),
+                  React.createElement('div', { className: 'score-track' },
+                    React.createElement('div', { className: 'score-fill', style: { width: `${a.detailedScoring.profitabilityScore || 0}%` } })
+                  )
+                ),
+                React.createElement('div', { className: 'score-bar' },
+                  React.createElement('div', { className: 'score-label' },
+                    React.createElement('span', null, 'Momentum'),
+                    React.createElement('span', { className: 'mono', style: { fontWeight: 600 } }, `${Math.round(a.detailedScoring.momentumScore || 0)}/100`)
+                  ),
+                  React.createElement('div', { className: 'score-track' },
+                    React.createElement('div', { className: 'score-fill', style: { width: `${a.detailedScoring.momentumScore || 0}%` } })
+                  )
+                ),
+                React.createElement('div', { className: 'score-bar' },
+                  React.createElement('div', { className: 'score-label' },
+                    React.createElement('span', null, 'Risque'),
+                    React.createElement('span', { className: 'mono', style: { fontWeight: 600 } }, `${Math.round(a.detailedScoring.riskScore || 0)}/100`)
+                  ),
+                  React.createElement('div', { className: 'score-track' },
+                    React.createElement('div', { className: 'score-fill', style: { width: `${a.detailedScoring.riskScore || 0}%` } })
+                  )
+                ),
+                React.createElement('div', { className: 'score-bar' },
+                  React.createElement('div', { className: 'score-label' },
+                    React.createElement('span', null, 'Qualite'),
+                    React.createElement('span', { className: 'mono', style: { fontWeight: 600 } }, `${Math.round(a.detailedScoring.qualityScore || 0)}/100`)
+                  ),
+                  React.createElement('div', { className: 'score-track' },
+                    React.createElement('div', { className: 'score-fill', style: { width: `${a.detailedScoring.qualityScore || 0}%` } })
+                  )
+                )
+              )
+            )
+          )
+        ),
+
+        React.createElement('div', { className: 'card section' },
+          React.createElement('div', { className: 'section-content' },
+            React.createElement('h2', { className: 'section-title' }, "These d'investissement"),
+            React.createElement('p', { style: { color: 'var(--text-secondary)', lineHeight: 1.8, fontSize: 14 } }, a.thesisSummary)
+          )
+        ),
+
+        React.createElement('div', { className: 'card section' },
+          React.createElement('div', { className: 'section-content' },
+            React.createElement('h2', { className: 'section-title' }, 'Metriques financieres'),
+            React.createElement('table', { className: 'metrics-table' },
+              React.createElement('thead', null,
+                React.createElement('tr', null, React.createElement('th', null, 'Metrique'), React.createElement('th', null, 'Valeur'), React.createElement('th', null, 'Var. YoY'), React.createElement('th', null, 'Tendance'))
+              ),
+              React.createElement('tbody', null,
+                Object.entries(a.financialMetrics).map(([k, v]) =>
+                  React.createElement('tr', { key: k },
+                    React.createElement('td', { style: { color: 'var(--text-secondary)' } }, ml[k] || k),
+                    React.createElement('td', null, `${v.current} ${v.unit}`),
+                    React.createElement('td', { className: v.yoyChange >= 0 ? 'positive' : 'negative', style: { fontWeight: 600 } },
+                      `${v.yoyChange >= 0 ? '+' : ''}${v.yoyChange}%`),
+                    React.createElement('td', null,
+                      React.createElement('div', { style: { width: 60, height: 3, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' } },
+                        React.createElement('div', {
+                          style: {
+                            width: `${Math.abs(v.yoyChange) > 100 ? 100 : Math.abs(v.yoyChange)}%`,
+                            height: '100%',
+                            background: v.yoyChange >= 0 ? 'var(--green)' : 'var(--red)',
+                            borderRadius: 2
+                          }
+                        })
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        ),
+
+        React.createElement('div', { className: 'card section' },
+          React.createElement('div', { className: 'section-content' },
+            React.createElement('h2', { className: 'section-title', style: { color: 'var(--green)' } }, 'Bull Case'),
+            React.createElement('p', { style: { color: 'var(--text-secondary)', lineHeight: 1.8, fontSize: 14, marginBottom: 16 } }, a.bullCase.thesis),
+            a.bullCase.factors.map((f, i) =>
+              React.createElement('div', { key: i, style: { display: 'flex', gap: 12, marginBottom: 14 } },
+                React.createElement('span', { className: `impact-badge impact-${f.impact}`, style: { marginTop: 2 } }, f.impact),
+                React.createElement('div', null,
+                  React.createElement('p', { style: { fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' } }, f.factor),
+                  React.createElement('p', { style: { fontSize: 13, color: 'var(--text-muted)', marginTop: 2 } }, f.description)
+                )
+              )
+            )
+          )
+        ),
+
+        React.createElement('div', { className: 'card section' },
+          React.createElement('div', { className: 'section-content' },
+            React.createElement('h2', { className: 'section-title', style: { color: 'var(--red)' } }, 'Bear Case'),
+            React.createElement('p', { style: { color: 'var(--text-secondary)', lineHeight: 1.8, fontSize: 14, marginBottom: 16 } }, a.bearCase.thesis),
+            a.bearCase.factors.map((f, i) =>
+              React.createElement('div', { key: i, style: { display: 'flex', gap: 12, marginBottom: 14 } },
+                React.createElement('span', { className: `impact-badge impact-${f.impact}`, style: { marginTop: 2 } }, f.impact),
+                React.createElement('div', null,
+                  React.createElement('p', { style: { fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' } }, f.factor),
+                  React.createElement('p', { style: { fontSize: 13, color: 'var(--text-muted)', marginTop: 2 } }, f.description)
+                )
+              )
+            )
+          )
+        ),
+
+        React.createElement('div', { className: 'card section' },
+          React.createElement('div', { className: 'section-content' },
+            React.createElement('h2', { className: 'section-title' }, 'Catalyseurs (12 mois)'),
+            a.catalysts.map((c, i) =>
+              React.createElement('div', { key: i, style: { display: 'flex', gap: 14, marginBottom: 16 } },
+                React.createElement('div', { className: `catalyst-dot dot-${c.impact}` }),
+                React.createElement('div', { style: { flex: 1 } },
+                  React.createElement('div', { style: { display: 'flex', alignItems: 'baseline', gap: 10 } },
+                    React.createElement('p', { style: { fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' } }, c.name),
+                    React.createElement('span', { className: 'mono', style: { fontSize: 11, color: 'var(--text-dim)' } }, c.expectedDate)
+                  ),
+                  React.createElement('p', { style: { fontSize: 13, color: 'var(--text-muted)', marginTop: 3 } }, c.description)
+                )
+              )
+            )
+          )
+        ),
+
+        React.createElement('div', { style: { marginTop: 28, paddingTop: 20, borderTop: '1px solid var(--border)', textAlign: 'center', marginBottom: 40 } },
+          React.createElement('p', { style: { fontSize: 11, color: 'var(--text-dim)' } }, "Genere par Meridian AI — Ce document ne constitue pas un conseil en investissement.")
+        )
+      );
+    }
+
+    function WatchlistPage() {
+      const [memos, setMemos] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const watchlist = watchlistStorage.get();
+
+      useEffect(() => {
+        api.getMemos().then(memos => {
+          const watched = memos.filter(m => watchlist[m.ticker]);
+          setMemos(watched);
+        }).catch(console.error).finally(() => setLoading(false));
+      }, []);
+
+      const removeTicker = (ticker) => {
+        watchlistStorage.removeTicker(ticker);
+        setMemos(p => p.filter(m => m.ticker !== ticker));
+      };
+
+      const bc = (r) => r === 'BUY' ? 'badge badge-buy' : r === 'SELL' ? 'badge badge-sell' : 'badge badge-hold';
+
+      if (loading) return React.createElement('div', { style: { display: 'flex', justifyContent: 'center', padding: 80 } }, React.createElement('div', { className: 'spinner' }));
+
+      return React.createElement('div', { className: 'fade-in' },
+        React.createElement('div', { style: { marginBottom: 32 } },
+          React.createElement('h1', { style: { fontSize: 24, fontWeight: 800, letterSpacing: '-0.03em' } }, 'Watchlist'),
+          React.createElement('p', { style: { color: 'var(--text-muted)', marginTop: 4, fontSize: 14 } }, `${memos.length} titre${memos.length !== 1 ? 's' : ''} sous surveillance`)
+        ),
+
+        memos.length === 0
+          ? React.createElement('div', { className: 'card', style: { padding: 64, textAlign: 'center' } },
+              React.createElement('div', { style: { width: 48, height: 48, border: '2px solid var(--border)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', color: 'var(--text-dim)' } },
+                React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, width: 24, height: 24 },
+                  React.createElement('path', { d: 'M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z', strokeLinecap: 'round', strokeLinejoin: 'round' })
+                )
+              ),
+              React.createElement('h3', { style: { fontSize: 18, fontWeight: 600, marginBottom: 8 } }, 'Aucun titre'),
+              React.createElement('p', { style: { color: 'var(--text-muted)', marginBottom: 28, fontSize: 14 } }, "Ajoutez des titres a votre watchlist depuis une analyse."),
+              React.createElement('a', { href: '#/analyze', className: 'btn-primary', style: { textDecoration: 'none' } }, 'Nouvelle analyse')
+            )
+          : React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } },
+              memos.map(m =>
+                React.createElement('a', {
+                  key: m.id, href: `#/memo/${m.id}`, className: 'card card-hover',
+                  style: { padding: '20px 24px', textDecoration: 'none', color: 'inherit', display: 'block' }
+                },
+                  React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+                    React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 16, flex: 1, minWidth: 0 } },
+                      React.createElement('span', { className: 'mono', style: { fontWeight: 600, color: 'var(--accent-hover)', fontSize: 15, minWidth: 60 } }, m.ticker),
+                      React.createElement('span', { className: bc(m.analysis.recommendation) }, m.analysis.recommendation),
+                      React.createElement('span', { style: { color: 'var(--text-secondary)', fontSize: 14, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, m.companyName),
+                    ),
+                    React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 } },
+                      React.createElement('span', { className: 'mono', style: { fontSize: 12, color: 'var(--text-muted)' } }, `${Math.round(m.analysis.confidenceScore * 100)}%`),
+                      React.createElement('span', { style: { fontSize: 12, color: 'var(--text-dim)' } }, m.quarter),
+                      React.createElement('button', {
+                        onClick: (e) => { e.stopPropagation(); e.preventDefault(); removeTicker(m.ticker); },
+                        style: { background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', padding: 4, display: 'flex' }
+                      }, Icon.trash)
+                    )
+                  )
+                )
+              )
+            )
+      );
+    }
+
+    function ComparePage() {
+      const [memos, setMemos] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [selected, setSelected] = useState([null, null]);
+
+      useEffect(() => {
+        api.getMemos().then(setMemos).catch(console.error).finally(() => setLoading(false));
+      }, []);
+
+      const m1 = selected[0] ? memos.find(m => m.id === selected[0]) : null;
+      const m2 = selected[1] ? memos.find(m => m.id === selected[1]) : null;
+
+      const bc = (r) => r === 'BUY' ? 'badge badge-buy' : r === 'SELL' ? 'badge badge-sell' : 'badge badge-hold';
+      const ml = { revenue: "Chiffre d'affaires", eps: "BPA (EPS)", grossMargin: "Marge brute", operatingMargin: "Marge operationnelle", debtToEquity: "Dette / Fonds propres", freeCashFlow: "Free Cash Flow" };
+
+      if (loading) return React.createElement('div', { style: { display: 'flex', justifyContent: 'center', padding: 80 } }, React.createElement('div', { className: 'spinner' }));
+
+      return React.createElement('div', { className: 'fade-in' },
+        React.createElement('div', { style: { marginBottom: 32 } },
+          React.createElement('h1', { style: { fontSize: 24, fontWeight: 800, letterSpacing: '-0.03em' } }, 'Comparer'),
+          React.createElement('p', { style: { color: 'var(--text-muted)', marginTop: 4, fontSize: 14 } }, 'Selectionnez deux memos pour comparer.')
+        ),
+
+        React.createElement('div', { className: 'grid-2', style: { marginBottom: 32 } },
+          React.createElement('div', null,
+            React.createElement('label', { style: { display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 } }, 'Position 1'),
+            React.createElement('select', {
+              className: 'input-field',
+              value: selected[0] || '',
+              onChange: e => setSelected([e.target.value || null, selected[1]])
+            },
+              React.createElement('option', { value: '' }, 'Selectionnez un memo...'),
+              memos.map(m => React.createElement('option', { key: m.id, value: m.id }, `${m.ticker} - ${m.companyName}`))
+            )
+          ),
+          React.createElement('div', null,
+            React.createElement('label', { style: { display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 } }, 'Position 2'),
+            React.createElement('select', {
+              className: 'input-field',
+              value: selected[1] || '',
+              onChange: e => setSelected([selected[0], e.target.value || null])
+            },
+              React.createElement('option', { value: '' }, 'Selectionnez un memo...'),
+              memos.map(m => React.createElement('option', { key: m.id, value: m.id }, `${m.ticker} - ${m.companyName}`))
+            )
+          )
+        ),
+
+        m1 && m2 ? React.createElement('div', { className: 'comparison-grid' },
+          React.createElement('div', { className: 'card section' },
+            React.createElement('div', { className: 'section-content' },
+              React.createElement('h2', { className: 'section-title' }, m1.companyName),
+              React.createElement('span', { className: 'mono', style: { color: 'var(--accent-hover)', fontWeight: 600, fontSize: 16 } }, m1.ticker),
+              React.createElement('div', { style: { margin: '16px 0' } },
+                React.createElement('span', { className: bc(m1.analysis.recommendation) }, m1.analysis.recommendation),
+                React.createElement('span', { className: 'mono', style: { marginLeft: 12, fontSize: 12, color: 'var(--text-muted)' } }, `Confiance: ${Math.round(m1.analysis.confidenceScore * 100)}%`)
+              ),
+              React.createElement('p', { style: { fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 } }, m1.analysis.thesisSummary),
+              React.createElement('h3', { style: { fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 8 } }, 'Metriques'),
+              React.createElement('table', { className: 'metrics-table', style: { fontSize: 12 } },
+                React.createElement('tbody', null,
+                  Object.entries(m1.analysis.financialMetrics).slice(0, 4).map(([k, v]) =>
+                    React.createElement('tr', { key: k },
+                      React.createElement('td', { style: { color: 'var(--text-secondary)', padding: '8px 12px' } }, ml[k] || k),
+                      React.createElement('td', { style: { padding: '8px 12px' } }, `${v.current} ${v.unit}`)
+                    )
+                  )
+                )
+              )
+            )
+          ),
+          React.createElement('div', { className: 'card section' },
+            React.createElement('div', { className: 'section-content' },
+              React.createElement('h2', { className: 'section-title' }, m2.companyName),
+              React.createElement('span', { className: 'mono', style: { color: 'var(--accent-hover)', fontWeight: 600, fontSize: 16 } }, m2.ticker),
+              React.createElement('div', { style: { margin: '16px 0' } },
+                React.createElement('span', { className: bc(m2.analysis.recommendation) }, m2.analysis.recommendation),
+                React.createElement('span', { className: 'mono', style: { marginLeft: 12, fontSize: 12, color: 'var(--text-muted)' } }, `Confiance: ${Math.round(m2.analysis.confidenceScore * 100)}%`)
+              ),
+              React.createElement('p', { style: { fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 } }, m2.analysis.thesisSummary),
+              React.createElement('h3', { style: { fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 8 } }, 'Metriques'),
+              React.createElement('table', { className: 'metrics-table', style: { fontSize: 12 } },
+                React.createElement('tbody', null,
+                  Object.entries(m2.analysis.financialMetrics).slice(0, 4).map(([k, v]) =>
+                    React.createElement('tr', { key: k },
+                      React.createElement('td', { style: { color: 'var(--text-secondary)', padding: '8px 12px' } }, ml[k] || k),
+                      React.createElement('td', { style: { padding: '8px 12px' } }, `${v.current} ${v.unit}`)
+                    )
+                  )
+                )
+              )
+            )
+          )
+        ) : React.createElement('div', { className: 'card', style: { padding: 48, textAlign: 'center' } },
+          React.createElement('p', { style: { color: 'var(--text-muted)' } }, 'Selectionnez deux memos pour commencer la comparaison.')
+        )
+      );
+    }
+
+    function App() {
+      const { user, loading } = useAuth();
+      const { path } = useRouter();
+
+      if (loading) return React.createElement('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--bg)' } }, React.createElement('div', { className: 'spinner' }));
+      if (!user) return React.createElement(LoginPage);
+
+      let page;
+      if (path === '/' || path === '') page = React.createElement(DashboardPage);
+      else if (path === '/analyze') page = React.createElement(AnalyzePage);
+      else if (path === '/watchlist') page = React.createElement(WatchlistPage);
+      else if (path === '/compare') page = React.createElement(ComparePage);
+      else if (path.startsWith('/memo/')) page = React.createElement(MemoPage, { memoId: path.split('/memo/')[1], key: path });
+      else page = React.createElement(DashboardPage);
+
+      return React.createElement('div', { className: 'app-layout' },
+        React.createElement(Sidebar),
+        React.createElement('main', { className: 'main-content' }, page)
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(
+      React.createElement(AuthProvider, null, React.createElement(App))
+    );
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+</body>
+</html>
