@@ -14,20 +14,26 @@ PORT = int(os.environ.get('PORT', 4000))
 # ============================================================
 # DATABASE CONFIGURATION
 # ============================================================
-_default_db = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'meridian.db')
-# Si la DB par défaut est corrompue ou inaccessible, utilise /tmp
-try:
-    _tc = sqlite3.connect(_default_db)
-    _tc.execute("PRAGMA integrity_check")
-    _tc.close()
-    DB_PATH = os.environ.get('MERIDIAN_DB', _default_db)
-except Exception:
-    print(f"  [WARN] DB {_default_db} inaccessible, utilisation de /tmp/meridian.db")
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+USE_POSTGRES = bool(DATABASE_URL)
+
+if not USE_POSTGRES:
+    _default_db = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'meridian.db')
     try:
-        os.remove(_default_db)
-    except OSError:
-        pass
-    DB_PATH = os.environ.get('MERIDIAN_DB', '/tmp/meridian.db')
+        import sqlite3 as _sqlite3
+        _tc = _sqlite3.connect(_default_db)
+        _tc.execute("PRAGMA integrity_check")
+        _tc.close()
+        DB_PATH = os.environ.get('MERIDIAN_DB', _default_db)
+    except Exception:
+        print(f"  [WARN] DB {_default_db} inaccessible, utilisation de /tmp/meridian.db")
+        try:
+            os.remove(_default_db)
+        except OSError:
+            pass
+        DB_PATH = os.environ.get('MERIDIAN_DB', '/tmp/meridian.db')
+else:
+    DB_PATH = None
 
 # ============================================================
 # JWT & SECURITY
