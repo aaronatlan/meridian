@@ -1,2 +1,5 @@
 anthropic
 psycopg2-binary
+yfinance
+pandas
+numpy

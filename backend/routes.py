@@ -118,6 +118,24 @@ class MeridianHandler(SimpleHTTPRequestHandler):
             }
             return self._json_response({"success": True, "data": memo})
 
+        # GET /api/market/:ticker?timeframe=1d&capital=10000
+        market_match = re.match(r'^/api/market/([A-Za-z0-9.\-]+)$', path)
+        if market_match:
+            uid = self._get_user_id()
+            if not uid:
+                return self._json_response({"success": False, "error": "Non autorisé"}, 401)
+            ticker = market_match.group(1).upper()
+            from urllib.parse import parse_qs
+            qs = parse_qs(urlparse(self.path).query)
+            timeframe = qs.get("timeframe", ["1d"])[0]
+            capital   = float(qs.get("capital", ["10000"])[0])
+            try:
+                from signals import analyze_ticker
+                result = analyze_ticker(ticker, timeframe, capital)
+                return self._json_response({"success": True, "data": result})
+            except Exception as e:
+                return self._json_response({"success": False, "error": str(e)}, 500)
+
         # GET /api/memos/:id/pdf
         pdf_match = re.match(r'^/api/memos/([a-f0-9-]+)/pdf$', path)
         if pdf_match:

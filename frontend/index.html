@@ -944,6 +944,109 @@
       );
     }
 
+    function TechnicalPanel({ ticker }) {
+      const [market, setMarket] = useState(null);
+      const [loadingMkt, setLoadingMkt] = useState(true);
+      const [errMkt, setErrMkt] = useState('');
+
+      useEffect(() => {
+        if (!ticker) return;
+        setLoadingMkt(true);
+        const token = localStorage.getItem('token');
+        fetch(`/api/market/${ticker}?timeframe=1d`, { headers: { 'Authorization': 'Bearer ' + token } })
+          .then(r => r.json())
+          .then(j => { if (j.success) setMarket(j.data); else setErrMkt(j.error || 'Erreur'); })
+          .catch(() => setErrMkt('Impossible de charger les données de marché'))
+          .finally(() => setLoadingMkt(false));
+      }, [ticker]);
+
+      if (loadingMkt) return React.createElement('div', { style: { padding: '20px 0', textAlign: 'center' } },
+        React.createElement('div', { className: 'spinner', style: { margin: '0 auto' } })
+      );
+      if (errMkt) return React.createElement('div', { style: { padding: '12px 0', color: 'var(--text-muted)', fontSize: 13 } }, errMkt);
+      if (!market) return null;
+
+      const sig = market.signal;
+      const sigColor = sig === 'BUY' ? 'var(--green)' : sig === 'SELL' ? 'var(--red)' : 'var(--amber)';
+      const sigBg    = sig === 'BUY' ? 'var(--green-bg)' : sig === 'SELL' ? 'var(--red-bg)' : 'var(--amber-bg)';
+      const ind = market.indicators;
+      const risk = market.risk;
+      const sc = market.scores;
+
+      const Pill = ({ label, value, color }) => React.createElement('div', {
+        style: { background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', minWidth: 100 }
+      },
+        React.createElement('div', { style: { fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', color: 'var(--text-dim)', marginBottom: 4, textTransform: 'uppercase' } }, label),
+        React.createElement('div', { style: { fontSize: 15, fontWeight: 700, color: color || 'var(--text-primary)', fontFamily: 'var(--font-mono)' } }, value)
+      );
+
+      const ScoreComp = ({ label, value, max = 30 }) => {
+        const pct = Math.round((value / max) * 100);
+        const c = pct >= 66 ? 'var(--green)' : pct >= 33 ? 'var(--amber)' : 'var(--red)';
+        return React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 } },
+          React.createElement('div', { style: { width: 80, fontSize: 12, color: 'var(--text-muted)' } }, label),
+          React.createElement('div', { style: { flex: 1, height: 5, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' } },
+            React.createElement('div', { style: { width: `${pct}%`, height: '100%', background: c, borderRadius: 3, transition: 'width 0.4s ease' } })
+          ),
+          React.createElement('div', { style: { width: 28, fontSize: 11, fontWeight: 600, color: c, textAlign: 'right', fontFamily: 'var(--font-mono)' } }, value)
+        );
+      };
+
+      return React.createElement('div', null,
+        // Signal + score
+        React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 } },
+          React.createElement('div', { style: { background: sigBg, border: `1px solid ${sigColor}30`, borderRadius: 10, padding: '10px 20px', textAlign: 'center' } },
+            React.createElement('div', { style: { fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', color: sigColor, opacity: 0.7, marginBottom: 2 } }, 'SIGNAL TECH.'),
+            React.createElement('div', { style: { fontSize: 22, fontWeight: 900, color: sigColor, letterSpacing: '-0.02em' } }, sig)
+          ),
+          React.createElement('div', { style: { flex: 1 } },
+            React.createElement('div', { style: { fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 } }, market.explanation),
+            React.createElement(ScoreComp, { label: 'Tendance', value: sc.trend, max: 30 }),
+            React.createElement(ScoreComp, { label: 'Momentum', value: sc.momentum, max: 35 }),
+            React.createElement(ScoreComp, { label: 'Volatilité', value: sc.volatility, max: 20 }),
+            React.createElement(ScoreComp, { label: 'Breakout', value: sc.breakout, max: 15 })
+          )
+        ),
+
+        // Indicateurs
+        React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 } },
+          React.createElement(Pill, { label: 'Prix', value: `$${ind.close.toLocaleString()}` }),
+          React.createElement(Pill, { label: 'RSI (14)', value: ind.rsi, color: ind.rsi > 70 ? 'var(--red)' : ind.rsi < 30 ? 'var(--green)' : 'var(--text-primary)' }),
+          React.createElement(Pill, { label: 'Tendance', value: ind.trend === 'haussier' ? '↑ Haussier' : '↓ Baissier', color: ind.trend === 'haussier' ? 'var(--green)' : 'var(--red)' }),
+          React.createElement(Pill, { label: 'MACD hist.', value: ind.macd_hist > 0 ? `+${ind.macd_hist}` : ind.macd_hist, color: ind.macd_hist > 0 ? 'var(--green)' : 'var(--red)' }),
+          React.createElement(Pill, { label: 'ATR', value: ind.atr }),
+          React.createElement(Pill, { label: 'VWAP', value: `$${ind.vwap.toLocaleString()}` })
+        ),
+
+        // Support / Résistance + Risk
+        risk && risk.stop_loss && React.createElement('div', { style: { background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px' } },
+          React.createElement('div', { style: { fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', color: 'var(--text-dim)', marginBottom: 10, textTransform: 'uppercase' } }, 'Risk management — 1% capital, R:R 2:1'),
+          React.createElement('div', { style: { display: 'flex', gap: 16, flexWrap: 'wrap' } },
+            React.createElement('div', null,
+              React.createElement('div', { style: { fontSize: 10, color: 'var(--text-dim)', marginBottom: 2 } }, 'Entrée'),
+              React.createElement('div', { style: { fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)' } }, `$${risk.entry}`)
+            ),
+            React.createElement('div', null,
+              React.createElement('div', { style: { fontSize: 10, color: 'var(--red)', marginBottom: 2 } }, 'Stop loss'),
+              React.createElement('div', { style: { fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--red)' } }, `$${risk.stop_loss}`)
+            ),
+            React.createElement('div', null,
+              React.createElement('div', { style: { fontSize: 10, color: 'var(--green)', marginBottom: 2 } }, 'Take profit'),
+              React.createElement('div', { style: { fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--green)' } }, `$${risk.take_profit}`)
+            ),
+            React.createElement('div', null,
+              React.createElement('div', { style: { fontSize: 10, color: 'var(--text-dim)', marginBottom: 2 } }, 'Taille position'),
+              React.createElement('div', { style: { fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)' } }, `${risk.position_size} actions`)
+            ),
+            React.createElement('div', null,
+              React.createElement('div', { style: { fontSize: 10, color: 'var(--text-dim)', marginBottom: 2 } }, 'Risque max'),
+              React.createElement('div', { style: { fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--amber)' } }, `$${risk.risk_amount}`)
+            )
+          )
+        )
+      );
+    }
+
     function MemoPage({ memoId }) {
       const [memo, setMemo] = useState(null);
       const [loading, setLoading] = useState(true);
@@ -1097,6 +1200,10 @@
               )
             )
           )
+        ),
+
+        React.createElement(SectionCard, { title: 'Analyse technique — Temps réel', color: 'var(--accent)' },
+          React.createElement(TechnicalPanel, { ticker: memo.ticker })
         ),
 
         React.createElement('div', { style: { marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--border)', textAlign: 'center', marginBottom: 40 } },

@@ -19,7 +19,7 @@ SYSTEM_PROMPT = """Tu es un analyste equity senior dans un hedge fund long/short
 
 À partir du transcript fourni, produis une analyse complète et actionnable. Tu dois :
 
-1. **Extraire les métriques exactes** mentionnées dans le transcript (revenue, EPS, margins, guidance). Ne jamais inventer de chiffres — utilise uniquement ce qui est dit explicitement. Si une métrique n'est pas mentionnée, indique 0 avec l'unité "N/A".
+1. **Extraire les métriques exactes** mentionnées dans le transcript (revenue, EPS, margins, guidance). Ne jamais inventer de chiffres — utilise uniquement ce qui est dit explicitement. Si une métrique n'est pas mentionnée, indique current à 0 et yoyChange à 0. Pour les unités : revenue et freeCashFlow → "B USD" (ou "M USD"), eps → "USD", grossMargin et operatingMargin → "%" (toujours, même si la valeur est 0), debtToEquity → "x".
 
 2. **Calculer les variations YoY** à partir des données du transcript. Si le transcript mentionne "revenue was $39.3B, up 78% year over year", utilise exactement ces chiffres.
 
