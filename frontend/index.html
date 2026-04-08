@@ -379,6 +379,18 @@
     }
     .factor-card:last-child { margin-bottom: 0; }
 
+    @keyframes pulse-live {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+    .live-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--green);
+      animation: pulse-live 1.5s ease-in-out infinite;
+      display: inline-block; flex-shrink: 0;
+    }
+    .live-dot.refreshing { background: var(--amber); }
+
     @media (max-width: 768px) {
       .grid-3, .grid-2, .comparison-grid, .stat-strip { grid-template-columns: 1fr; }
       .sidebar { display: none; }
@@ -1235,6 +1247,8 @@
       const [addInput, setAddInput]             = useState('');
       const [quant, setQuant]                   = useState(null);
       const [loadingQuant, setLoadingQuant]     = useState(false);
+      const [lastUpdated, setLastUpdated]       = useState(null);
+      const [refreshing, setRefreshing]         = useState(false);
       const chartRef = React.useRef(null);
       const widgetRef = React.useRef(null);
 
@@ -1275,17 +1289,25 @@
         });
       }, [activeTicker, timeframe]);
 
-      // Fetch quant signal from our backend
+      // Fetch quant signal — initial + polling every 60s
       useEffect(() => {
         if (!activeTicker) return;
-        setLoadingQuant(true);
-        setQuant(null);
-        const token = localStorage.getItem('token');
-        fetch(`/api/market/${activeTicker}?timeframe=1d`, { headers: { 'Authorization': 'Bearer ' + token } })
-          .then(r => r.json())
-          .then(j => { if (j.success) setQuant(j.data); })
-          .catch(() => {})
-          .finally(() => setLoadingQuant(false));
+        let alive = true;
+
+        const fetchSignal = (isInitial = false) => {
+          if (isInitial) { setLoadingQuant(true); setQuant(null); }
+          else setRefreshing(true);
+          const token = localStorage.getItem('token');
+          fetch(`/api/market/${activeTicker}?timeframe=1d`, { headers: { 'Authorization': 'Bearer ' + token } })
+            .then(r => r.json())
+            .then(j => { if (alive && j.success) { setQuant(j.data); setLastUpdated(new Date()); } })
+            .catch(() => {})
+            .finally(() => { if (alive) { setLoadingQuant(false); setRefreshing(false); } });
+        };
+
+        fetchSignal(true);
+        const interval = setInterval(() => fetchSignal(false), 60000);
+        return () => { alive = false; clearInterval(interval); };
       }, [activeTicker]);
 
       const addCustomTicker = () => {
@@ -1426,6 +1448,17 @@
               overflowY: 'auto', background: 'var(--bg-card)', padding: 16,
               display: 'flex', flexDirection: 'column', gap: 16,
             } },
+
+              // LIVE header
+              React.createElement('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 } },
+                React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 6 } },
+                  React.createElement('span', { className: `live-dot${refreshing ? ' refreshing' : ''}` }),
+                  React.createElement('span', { style: { fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: refreshing ? 'var(--amber)' : 'var(--green)' } },
+                    refreshing ? 'MISE À JOUR...' : 'LIVE')
+                ),
+                lastUpdated && React.createElement('span', { style: { fontSize: 10, color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' } },
+                  lastUpdated.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
+              ),
 
               loadingQuant
                 ? React.createElement('div', { style: { display: 'flex', justifyContent: 'center', padding: 40 } }, React.createElement('div', { className: 'spinner' }))
