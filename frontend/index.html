@@ -8,7 +8,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
-  <script src="https://s3.tradingview.com/tv.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -379,18 +378,6 @@
     }
     .factor-card:last-child { margin-bottom: 0; }
 
-    @keyframes pulse-live {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(0.8); }
-    }
-    .live-dot {
-      width: 7px; height: 7px; border-radius: 50%;
-      background: var(--green);
-      animation: pulse-live 1.5s ease-in-out infinite;
-      display: inline-block; flex-shrink: 0;
-    }
-    .live-dot.refreshing { background: var(--amber); }
-
     @media (max-width: 768px) {
       .grid-3, .grid-2, .comparison-grid, .stat-strip { grid-template-columns: 1fr; }
       .sidebar { display: none; }
@@ -411,7 +398,6 @@
       trash: React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, width: 15, height: 15 }, React.createElement('path', { d: 'M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M4 7h16', strokeLinecap: 'round', strokeLinejoin: 'round' })),
       watch: React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5 }, React.createElement('path', { d: 'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z', strokeLinecap: 'round', strokeLinejoin: 'round' }), React.createElement('circle', { cx: '12', cy: '12', r: '3' })),
       compare: React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5 }, React.createElement('path', { d: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01', strokeLinecap: 'round', strokeLinejoin: 'round' })),
-      trading: React.createElement('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5 }, React.createElement('path', { d: 'M3 3v18h18', strokeLinecap: 'round', strokeLinejoin: 'round' }), React.createElement('path', { d: 'M7 16l4-4 4 4 4-6', strokeLinecap: 'round', strokeLinejoin: 'round' })),
     };
 
     async function apiCall(path, opts = {}) {
@@ -576,8 +562,7 @@
           link('/', Icon.dashboard, 'Dashboard'),
           link('/analyze', Icon.analyze, 'Nouvelle analyse'),
           link('/watchlist', Icon.watch, 'Watchlist'),
-          link('/compare', Icon.compare, 'Comparer'),
-          link('/trading', Icon.trading, 'Trading Desk')
+          link('/compare', Icon.compare, 'Comparer')
         ),
         user && React.createElement('div', { className: 'sidebar-footer' },
           React.createElement('div', { className: 'sidebar-user-row' },
@@ -1226,331 +1211,6 @@
         )
       );
     }
-
-    // ============================================================
-    // TRADING DESK
-    // ============================================================
-
-    const DEFAULT_TICKERS = ['AAPL','MSFT','NVDA','GOOGL','AMZN','META','TSLA','JPM','V','BRK-B','NFLX','AMD'];
-
-    const tradingStorage = {
-      getCustom: () => { try { return JSON.parse(localStorage.getItem('custom_tickers') || '[]'); } catch { return []; } },
-      addCustom: (t) => { const list = tradingStorage.getCustom(); if (!list.includes(t)) { list.push(t); localStorage.setItem('custom_tickers', JSON.stringify(list)); } },
-      removeCustom: (t) => { const list = tradingStorage.getCustom().filter(x => x !== t); localStorage.setItem('custom_tickers', JSON.stringify(list)); },
-    };
-
-    function TradingDeskPage() {
-      const [activeTicker, setActiveTicker]     = useState('AAPL');
-      const [timeframe, setTimeframe]           = useState('D');
-      const [memoTickers, setMemoTickers]       = useState([]);
-      const [customTickers, setCustomTickers]   = useState(tradingStorage.getCustom());
-      const [addInput, setAddInput]             = useState('');
-      const [quant, setQuant]                   = useState(null);
-      const [loadingQuant, setLoadingQuant]     = useState(false);
-      const [lastUpdated, setLastUpdated]       = useState(null);
-      const [refreshing, setRefreshing]         = useState(false);
-      const chartRef = React.useRef(null);
-      const widgetRef = React.useRef(null);
-
-      // Fetch user's memo tickers
-      useEffect(() => {
-        api.getMemos().then(memos => {
-          const tickers = [...new Set(memos.map(m => m.ticker))];
-          setMemoTickers(tickers);
-        }).catch(() => {});
-      }, []);
-
-      // Init/update TradingView widget
-      useEffect(() => {
-        if (!chartRef.current || !window.TradingView) return;
-        chartRef.current.innerHTML = '';
-        const containerId = 'tv_' + activeTicker + '_' + Date.now();
-        const div = document.createElement('div');
-        div.id = containerId;
-        div.style.height = '100%';
-        chartRef.current.appendChild(div);
-        widgetRef.current = new window.TradingView.widget({
-          container_id: containerId,
-          symbol: activeTicker,
-          interval: timeframe,
-          theme: 'dark',
-          style: '1',
-          locale: 'fr',
-          width: '100%',
-          height: '100%',
-          toolbar_bg: '#0f1623',
-          hide_side_toolbar: false,
-          allow_symbol_change: true,
-          withdateranges: true,
-          save_image: false,
-          studies: ['RSI@tv-basicstudies','MACD@tv-basicstudies','EMA@tv-basicstudies'],
-          disabled_features: ['header_symbol_search'],
-          enabled_features: ['hide_left_toolbar_by_default'],
-        });
-      }, [activeTicker, timeframe]);
-
-      // Fetch quant signal — initial + polling every 60s
-      useEffect(() => {
-        if (!activeTicker) return;
-        let alive = true;
-
-        const fetchSignal = (isInitial = false) => {
-          if (isInitial) { setLoadingQuant(true); setQuant(null); }
-          else setRefreshing(true);
-          const token = localStorage.getItem('token');
-          fetch(`/api/market/${activeTicker}?timeframe=1d`, { headers: { 'Authorization': 'Bearer ' + token } })
-            .then(r => r.json())
-            .then(j => { if (alive && j.success) { setQuant(j.data); setLastUpdated(new Date()); } })
-            .catch(() => {})
-            .finally(() => { if (alive) { setLoadingQuant(false); setRefreshing(false); } });
-        };
-
-        fetchSignal(true);
-        const interval = setInterval(() => fetchSignal(false), 60000);
-        return () => { alive = false; clearInterval(interval); };
-      }, [activeTicker]);
-
-      const addCustomTicker = () => {
-        const t = addInput.trim().toUpperCase();
-        if (!t) return;
-        tradingStorage.addCustom(t);
-        setCustomTickers(tradingStorage.getCustom());
-        setAddInput('');
-        setActiveTicker(t);
-      };
-
-      const removeCustomTicker = (t) => {
-        tradingStorage.removeCustom(t);
-        setCustomTickers(tradingStorage.getCustom());
-        if (activeTicker === t) setActiveTicker('AAPL');
-      };
-
-      const TIMEFRAMES = [
-        { label: '5m', value: '5' }, { label: '15m', value: '15' },
-        { label: '1h', value: '60' }, { label: '4h', value: '240' },
-        { label: '1j', value: 'D' }, { label: '1S', value: 'W' },
-      ];
-
-      const sigColor = quant
-        ? (quant.signal === 'BUY' ? 'var(--green)' : quant.signal === 'SELL' ? 'var(--red)' : 'var(--amber)')
-        : 'var(--text-muted)';
-      const sigBg = quant
-        ? (quant.signal === 'BUY' ? 'var(--green-bg)' : quant.signal === 'SELL' ? 'var(--red-bg)' : 'var(--amber-bg)')
-        : 'transparent';
-
-      const TickerGroup = ({ title, tickers, removable }) =>
-        tickers.length === 0 ? null :
-        React.createElement('div', { style: { marginBottom: 18 } },
-          React.createElement('div', { style: { fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 8, paddingLeft: 8, textTransform: 'uppercase' } }, title),
-          tickers.map(t =>
-            React.createElement('div', { key: t, style: { display: 'flex', alignItems: 'center', gap: 4 } },
-              React.createElement('button', {
-                onClick: () => setActiveTicker(t),
-                style: {
-                  flex: 1, textAlign: 'left', padding: '7px 10px', fontSize: 13, fontWeight: activeTicker === t ? 700 : 500,
-                  background: activeTicker === t ? 'var(--accent-glow)' : 'transparent',
-                  color: activeTicker === t ? 'var(--accent-hover)' : 'var(--text-secondary)',
-                  border: activeTicker === t ? '1px solid rgba(59,130,246,0.3)' : '1px solid transparent',
-                  borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--font-mono)', transition: 'all 0.15s',
-                }
-              }, t),
-              removable && React.createElement('button', {
-                onClick: () => removeCustomTicker(t),
-                style: { background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', padding: '4px 6px', fontSize: 14, lineHeight: 1, opacity: 0.5 },
-                onMouseEnter: e => e.currentTarget.style.color = 'var(--red)',
-                onMouseLeave: e => e.currentTarget.style.color = 'var(--text-dim)',
-              }, '×')
-            )
-          )
-        );
-
-      return React.createElement('div', { className: 'fade-in', style: { display: 'flex', gap: 0, height: 'calc(100vh - 80px)', overflow: 'hidden', margin: '-32px -32px 0', padding: 0 } },
-
-        // ── LEFT: Ticker list ──
-        React.createElement('div', { style: {
-          width: 170, flexShrink: 0, background: 'var(--bg-sidebar)',
-          borderRight: '1px solid var(--border)', padding: '16px 10px',
-          overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 0,
-        } },
-          React.createElement('div', { style: { fontSize: 11, fontWeight: 800, letterSpacing: '0.12em', color: 'var(--accent)', marginBottom: 18, paddingLeft: 8 } }, 'TRADING DESK'),
-
-          React.createElement(TickerGroup, { title: 'Indices / Valeurs', tickers: DEFAULT_TICKERS }),
-
-          memoTickers.filter(t => !DEFAULT_TICKERS.includes(t)).length > 0 &&
-            React.createElement(TickerGroup, { title: 'Vos analyses', tickers: memoTickers.filter(t => !DEFAULT_TICKERS.includes(t)) }),
-
-          React.createElement(TickerGroup, { title: 'Personnalisés', tickers: customTickers, removable: true }),
-
-          // Add custom ticker
-          React.createElement('div', { style: { marginTop: 'auto', paddingTop: 16, borderTop: '1px solid var(--border)' } },
-            React.createElement('div', { style: { display: 'flex', gap: 4 } },
-              React.createElement('input', {
-                value: addInput, onChange: e => setAddInput(e.target.value.toUpperCase()),
-                onKeyDown: e => e.key === 'Enter' && addCustomTicker(),
-                placeholder: 'TICKER',
-                style: {
-                  flex: 1, padding: '6px 8px', fontSize: 12, fontFamily: 'var(--font-mono)',
-                  background: 'var(--bg-input)', border: '1px solid var(--border)',
-                  borderRadius: 6, color: 'var(--text-primary)', outline: 'none',
-                }
-              }),
-              React.createElement('button', {
-                onClick: addCustomTicker,
-                style: {
-                  padding: '6px 8px', background: 'var(--accent)', border: 'none',
-                  borderRadius: 6, color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 700,
-                }
-              }, '+')
-            )
-          )
-        ),
-
-        // ── CENTER + RIGHT ──
-        React.createElement('div', { style: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' } },
-
-          // Top bar
-          React.createElement('div', { style: {
-            display: 'flex', alignItems: 'center', gap: 16, padding: '12px 20px',
-            borderBottom: '1px solid var(--border)', background: 'var(--bg-card)', flexShrink: 0,
-          } },
-            React.createElement('div', { style: { display: 'flex', alignItems: 'baseline', gap: 10 } },
-              React.createElement('span', { style: { fontSize: 20, fontWeight: 800, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' } }, activeTicker),
-              quant && React.createElement('span', { style: { fontSize: 17, fontWeight: 700, color: quant.price.change_pct >= 0 ? 'var(--green)' : 'var(--red)', fontFamily: 'var(--font-mono)' } },
-                `$${quant.price.price}`),
-              quant && React.createElement('span', { style: { fontSize: 13, color: quant.price.change_pct >= 0 ? 'var(--green)' : 'var(--red)', fontFamily: 'var(--font-mono)' } },
-                `${quant.price.change_pct >= 0 ? '+' : ''}${quant.price.change_pct}%`)
-            ),
-            React.createElement('div', { style: { marginLeft: 'auto', display: 'flex', gap: 4 } },
-              TIMEFRAMES.map(tf =>
-                React.createElement('button', {
-                  key: tf.value, onClick: () => setTimeframe(tf.value),
-                  style: {
-                    padding: '5px 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-mono)',
-                    background: timeframe === tf.value ? 'var(--accent)' : 'transparent',
-                    color: timeframe === tf.value ? '#fff' : 'var(--text-muted)',
-                    border: '1px solid ' + (timeframe === tf.value ? 'var(--accent)' : 'var(--border)'),
-                    borderRadius: 6, transition: 'all 0.15s',
-                  }
-                }, tf.label)
-              )
-            )
-          ),
-
-          // Chart + signals row
-          React.createElement('div', { style: { flex: 1, display: 'flex', overflow: 'hidden' } },
-
-            // TradingView chart
-            React.createElement('div', { ref: chartRef, style: { flex: 1, minWidth: 0 } }),
-
-            // Right panel: signals + indicators + risk
-            React.createElement('div', { style: {
-              width: 280, flexShrink: 0, borderLeft: '1px solid var(--border)',
-              overflowY: 'auto', background: 'var(--bg-card)', padding: 16,
-              display: 'flex', flexDirection: 'column', gap: 16,
-            } },
-
-              // LIVE header
-              React.createElement('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 } },
-                React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 6 } },
-                  React.createElement('span', { className: `live-dot${refreshing ? ' refreshing' : ''}` }),
-                  React.createElement('span', { style: { fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: refreshing ? 'var(--amber)' : 'var(--green)' } },
-                    refreshing ? 'MISE À JOUR...' : 'LIVE')
-                ),
-                lastUpdated && React.createElement('span', { style: { fontSize: 10, color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' } },
-                  lastUpdated.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
-              ),
-
-              loadingQuant
-                ? React.createElement('div', { style: { display: 'flex', justifyContent: 'center', padding: 40 } }, React.createElement('div', { className: 'spinner' }))
-                : !quant
-                ? React.createElement('p', { style: { color: 'var(--text-muted)', fontSize: 13 } }, 'Données indisponibles')
-                : React.createElement(React.Fragment, null,
-
-                  // Signal
-                  React.createElement('div', { style: { background: sigBg, border: `1px solid ${sigColor}30`, borderRadius: 10, padding: '14px 16px', textAlign: 'center' } },
-                    React.createElement('div', { style: { fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: sigColor, opacity: 0.7, marginBottom: 4 } }, 'SIGNAL MERIDIAN'),
-                    React.createElement('div', { style: { fontSize: 28, fontWeight: 900, color: sigColor, letterSpacing: '-0.02em' } }, quant.signal),
-                    React.createElement('div', { style: { fontSize: 12, fontFamily: 'var(--font-mono)', color: sigColor, marginTop: 2 } }, `Score ${quant.score}/100`)
-                  ),
-
-                  // Explanation
-                  React.createElement('p', { style: { fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.7 } }, quant.explanation),
-
-                  // Score breakdown
-                  React.createElement('div', { style: { background: 'var(--bg-input)', borderRadius: 8, padding: '12px 14px' } },
-                    React.createElement('div', { style: { fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--text-dim)', marginBottom: 10, textTransform: 'uppercase' } }, 'Score détail'),
-                    [['Tendance', quant.scores.trend, 30], ['Momentum', quant.scores.momentum, 35], ['Volatilité', quant.scores.volatility, 20], ['Breakout', quant.scores.breakout, 15]].map(([label, val, max]) => {
-                      const pct = Math.round(val / max * 100);
-                      const c = pct >= 66 ? 'var(--green)' : pct >= 33 ? 'var(--amber)' : 'var(--red)';
-                      return React.createElement('div', { key: label, style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 } },
-                        React.createElement('div', { style: { width: 68, fontSize: 11.5, color: 'var(--text-muted)' } }, label),
-                        React.createElement('div', { style: { flex: 1, height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' } },
-                          React.createElement('div', { style: { width: `${pct}%`, height: '100%', background: c, borderRadius: 2 } })
-                        ),
-                        React.createElement('div', { style: { width: 22, fontSize: 11, fontWeight: 700, color: c, textAlign: 'right', fontFamily: 'var(--font-mono)' } }, val)
-                      );
-                    })
-                  ),
-
-                  // Indicators grid
-                  React.createElement('div', { style: { background: 'var(--bg-input)', borderRadius: 8, padding: '12px 14px' } },
-                    React.createElement('div', { style: { fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--text-dim)', marginBottom: 10, textTransform: 'uppercase' } }, 'Indicateurs'),
-                    [
-                      ['RSI (14)', quant.indicators.rsi, quant.indicators.rsi > 70 ? 'var(--red)' : quant.indicators.rsi < 30 ? 'var(--green)' : null],
-                      ['EMA 20', quant.indicators.ema20, null],
-                      ['EMA 50', quant.indicators.ema50, null],
-                      ['MACD', quant.indicators.macd, quant.indicators.macd > 0 ? 'var(--green)' : 'var(--red)'],
-                      ['ATR (14)', quant.indicators.atr, null],
-                      ['VWAP', quant.indicators.vwap, null],
-                      ['Tendance', quant.indicators.trend === 'haussier' ? '↑ Haussier' : '↓ Baissier', quant.indicators.trend === 'haussier' ? 'var(--green)' : 'var(--red)'],
-                    ].map(([label, val, color]) =>
-                      React.createElement('div', { key: label, style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 } },
-                        React.createElement('span', { style: { fontSize: 11.5, color: 'var(--text-muted)' } }, label),
-                        React.createElement('span', { style: { fontSize: 12, fontWeight: 600, fontFamily: 'var(--font-mono)', color: color || 'var(--text-primary)' } }, val)
-                      )
-                    )
-                  ),
-
-                  // Support / Resistance
-                  React.createElement('div', { style: { background: 'var(--bg-input)', borderRadius: 8, padding: '12px 14px' } },
-                    React.createElement('div', { style: { fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--text-dim)', marginBottom: 10, textTransform: 'uppercase' } }, 'Support / Résistance'),
-                    React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: 6 } },
-                      React.createElement('span', { style: { fontSize: 12, color: 'var(--green)' } }, 'Support'),
-                      React.createElement('span', { style: { fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--green)' } }, `$${quant.support}`)
-                    ),
-                    React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between' } },
-                      React.createElement('span', { style: { fontSize: 12, color: 'var(--red)' } }, 'Résistance'),
-                      React.createElement('span', { style: { fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--red)' } }, `$${quant.resistance}`)
-                    )
-                  ),
-
-                  // Risk management
-                  quant.risk && quant.risk.stop_loss &&
-                  React.createElement('div', { style: { background: 'var(--bg-input)', borderRadius: 8, padding: '12px 14px' } },
-                    React.createElement('div', { style: { fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--text-dim)', marginBottom: 10, textTransform: 'uppercase' } }, 'Risk management'),
-                    [
-                      ['Entrée', `$${quant.risk.entry}`, 'var(--text-primary)'],
-                      ['Stop loss', `$${quant.risk.stop_loss}`, 'var(--red)'],
-                      ['Take profit', `$${quant.risk.take_profit}`, 'var(--green)'],
-                      ['Taille pos.', `${quant.risk.position_size} act.`, null],
-                      ['Risque max', `$${quant.risk.risk_amount}`, 'var(--amber)'],
-                    ].map(([label, val, color]) =>
-                      React.createElement('div', { key: label, style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 } },
-                        React.createElement('span', { style: { fontSize: 11.5, color: 'var(--text-muted)' } }, label),
-                        React.createElement('span', { style: { fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-mono)', color: color || 'var(--text-primary)' } }, val)
-                      )
-                    )
-                  ),
-
-                  React.createElement('p', { style: { fontSize: 10, color: 'var(--text-dim)', lineHeight: 1.6, marginTop: 4 } },
-                    'Signaux basés sur données différées 15min. Ne constitue pas un conseil en investissement.')
-                ) // end quant
-            ) // end right panel
-          ) // end chart + signals
-        ) // end center + right
-      ); // end page
-    }
-
     function WatchlistPage() {
       const [memos, setMemos] = useState([]);
       const [loading, setLoading] = useState(true);
@@ -1670,7 +1330,6 @@
       else if (path === '/analyze') page = React.createElement(AnalyzePage);
       else if (path === '/watchlist') page = React.createElement(WatchlistPage);
       else if (path === '/compare') page = React.createElement(ComparePage);
-      else if (path === '/trading') page = React.createElement(TradingDeskPage);
       else if (path.startsWith('/memo/')) page = React.createElement(MemoPage, { memoId: path.split('/memo/')[1], key: path });
       else page = React.createElement(DashboardPage);
       return React.createElement('div', { className: 'app-layout' },
